@@ -215,28 +215,42 @@ export default function Home() {
       {/* 초기 화면: 3등분 감정 선택 */}
       {!activeEmotion && (
         <div className="absolute inset-0 flex flex-col z-10 bg-white">
-          {/* 상단 미니멀 로고 */}
-          <div className="absolute top-5 left-6 text-lg font-bold tracking-wide pointer-events-none z-20 text-black">
-            naemaum
+          {/* 상단 헤더 영역 */}
+          <div className="flex-none h-[80px] flex items-center justify-between px-6 bg-white z-20 relative">
+            <div className="text-lg font-bold tracking-wide pointer-events-none text-black">
+              naemaum
+            </div>
+            <button className="p-2 -mr-2 text-black active:opacity-50 transition-opacity">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </button>
           </div>
+          
+          <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
 
-          <EmotionSectionButton
-            label="화난다"
-            activeColorClass="active:bg-red-500 active:text-white"
-            onPress={() => handleTouch("angry")}
-          />
-          <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
-          <EmotionSectionButton
-            label="우울해"
-            activeColorClass="active:bg-purple-500 active:text-white"
-            onPress={() => handleTouch("depressed")}
-          />
-          <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
-          <EmotionSectionButton
-            label="행복해"
-            activeColorClass="active:bg-green-500 active:text-white"
-            onPress={() => handleTouch("happy")}
-          />
+          {/* 감정 선택 영역 */}
+          <div className="flex-1 flex flex-col w-full">
+            <EmotionSectionButton
+              label="화난다"
+              activeColorClass="active:bg-red-500 active:text-white"
+              onPress={() => handleTouch("angry")}
+            />
+            <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
+            <EmotionSectionButton
+              label="우울해"
+              activeColorClass="active:bg-purple-500 active:text-white"
+              onPress={() => handleTouch("depressed")}
+            />
+            <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
+            <EmotionSectionButton
+              label="행복해"
+              activeColorClass="active:bg-green-500 active:text-white"
+              onPress={() => handleTouch("happy")}
+            />
+          </div>
         </div>
       )}
     </div>
