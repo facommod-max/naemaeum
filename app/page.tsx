@@ -225,13 +225,13 @@ export default function Home() {
             activeColorClass="active:bg-red-500 active:text-white"
             onPress={() => handleTouch("angry")}
           />
-          <div className="w-full h-[1px] bg-black shrink-0" />
+          <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
           <EmotionSectionButton
             label="우울해"
             activeColorClass="active:bg-purple-500 active:text-white"
             onPress={() => handleTouch("depressed")}
           />
-          <div className="w-full h-[1px] bg-black shrink-0" />
+          <div className="w-full h-[1px] bg-[#E5E5E5] shrink-0" />
           <EmotionSectionButton
             label="행복해"
             activeColorClass="active:bg-green-500 active:text-white"
