@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 // Supabase 클라이언트 초기화
@@ -8,79 +8,72 @@ const supabase = createClient();
 
 type Emotion = "angry" | "depressed" | "happy";
 
-interface EmotionRecord {
-  id: number;
-  emotion: string;
-  tap_count: number;
-  recorded_at: string;
-}
-
 const emotionLabels: Record<Emotion, string> = {
-  angry: "화가남",
-  depressed: "우울함",
-  happy: "행복함",
+  angry: "화남",
+  depressed: "우울",
+  happy: "행복",
+};
+
+const emotionColors: Record<Emotion, string> = {
+  angry: "bg-red-500",
+  depressed: "bg-blue-500",
+  happy: "bg-yellow-400",
+};
+
+const emotionHex: Record<Emotion, string> = {
+  angry: "#ef4444",      // bg-red-500
+  depressed: "#3b82f6",  // bg-blue-500
+  happy: "#facc15",      // bg-yellow-400
 };
 
 export default function Home() {
-  const [counts, setCounts] = useState({
-    angry: 0,
-    depressed: 0,
-    happy: 0,
-  });
-
-  const [records, setRecords] = useState<EmotionRecord[]>([]);
+  const [activeEmotion, setActiveEmotion] = useState<Emotion | null>(null);
+  const [tapCount, setTapCount] = useState(0);
   
-  // 감정별로 타이머를 저장하기 위한 ref
-  const timeoutsRef = useRef<{ [key in Emotion]?: NodeJS.Timeout }>({});
-
-  const fetchRecords = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("emotion_records")
-      .select("*")
-      .order("recorded_at", { ascending: false })
-      .limit(10);
-
-    if (error) {
-      console.error("최근 기록을 불러오는 중 오류 발생:", error);
-      return;
-    }
-
-    if (data) {
-      setRecords(data as EmotionRecord[]);
-    }
-  }, []);
-
-  // 초기 렌더링 시 최근 기록 가져오기
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  // 상태 업데이트 지연 방지를 위한 useRef 관리
+  const tapCountRef = useRef(0);
+  const activeEmotionRef = useRef<Emotion | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTouch = (emotion: Emotion) => {
-    setCounts((prev) => {
-      const newCount = prev[emotion] + 1;
+    // 진동 피드백
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(20); 
+    }
 
-      // 기존 타이머 취소
-      if (timeoutsRef.current[emotion]) {
-        clearTimeout(timeoutsRef.current[emotion]!);
-      }
+    const isDifferentEmotion = activeEmotionRef.current !== emotion;
 
-      // 2초 뒤에 기록 확정 타이머 설정
-      timeoutsRef.current[emotion] = setTimeout(() => {
-        commitRecord(emotion, newCount);
-      }, 2000);
+    if (isDifferentEmotion) {
+      tapCountRef.current = 1;
+      activeEmotionRef.current = emotion;
+      setActiveEmotion(emotion);
+    } else {
+      tapCountRef.current += 1;
+    }
 
-      return {
-        ...prev,
-        [emotion]: newCount,
-      };
-    });
+    const currentCount = tapCountRef.current;
+    
+    // 화면 렌더링을 위해 state 업데이트
+    setTapCount(currentCount);
+
+    // 기존 타이머 취소
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // 새로운 2초 타이머 시작
+    timeoutRef.current = setTimeout(() => {
+      commitRecord(emotion, currentCount);
+    }, 2000);
   };
 
   const commitRecord = async (emotion: Emotion, finalCount: number) => {
+    if (finalCount <= 0) return;
+
     const emotionName = emotionLabels[emotion];
     const recordedAt = new Date().toISOString();
 
-    // Supabase에 저장
+    // Supabase에 저장 (화면 표시 안함)
     const { error } = await supabase.from("emotion_records").insert({
       emotion: emotionName,
       tap_count: finalCount,
@@ -88,97 +81,154 @@ export default function Home() {
     });
 
     if (error) {
-      console.error("기록 저장 중 오류 발생:", error);
-      alert("기록 저장에 실패했습니다. 다시 시도해주세요.");
-    } else {
-      // 성공적으로 저장되면 데이터를 다시 불러와서 최근 기록을 업데이트
-      fetchRecords();
+      console.error("[commitRecord] 기록 저장 중 오류 발생:", error);
     }
 
-    // 해당 감정의 카운트 초기화
-    setCounts((prev) => ({
-      ...prev,
-      [emotion]: 0,
-    }));
+    // 게이지가 바닥으로 떨어지도록 카운트 0으로 설정
+    setTapCount(0);
+    
+    // 색상과 물결이 사라지는 애니메이션 대기 후 상태 초기화
+    setTimeout(() => {
+      setActiveEmotion(null);
+      tapCountRef.current = 0;
+      activeEmotionRef.current = null;
+    }, 300); 
   };
 
-  // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
     return () => {
-      Object.values(timeoutsRef.current).forEach((timeout) => {
-        if (timeout) clearTimeout(timeout);
-      });
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
+  // 높이 계산 로직 (새로운 체감 곡선 적용)
+  const calculateHeight = () => {
+    if (tapCount === 0 || !activeEmotion) return 0;
+    
+    // 1회 약 4.4%, 10회 약 25%, 50회 약 65%, 100회 약 84%, 200회 이상 95% 이상에 수렴하는 자연스러운 곡선
+    const height = 100 * (1 - Math.exp(-Math.pow(tapCount, 0.8) / 22));
+    return Math.min(height, 100);
+  };
+
+  const fillHeight = calculateHeight();
+
   return (
-    <div className="flex flex-col items-center min-h-screen bg-white dark:bg-black text-black dark:text-white px-6 py-20">
-      <main className="w-full max-w-sm flex flex-col items-center h-full">
-        <h1 className="text-2xl font-light tracking-wide mb-24 text-center">
-          지금 내 마음은?
-        </h1>
+    <div className="relative w-full h-[100dvh] bg-white dark:bg-black overflow-hidden select-none touch-none text-black dark:text-white">
+      
+      {/* 제자리에서 위아래로 출렁이는 2개의 물결 레이어 애니메이션 */}
+      <style>{`
+        @keyframes waveMorphFront {
+          0%, 100% { transform: scaleY(1); }
+          50% { transform: scaleY(0.35); }
+        }
+        @keyframes waveMorphBack {
+          0%, 100% { transform: scaleY(0.4); }
+          50% { transform: scaleY(1.25); }
+        }
+        .animate-wave-front {
+          animation: waveMorphFront 1.2s ease-in-out infinite;
+        }
+        .animate-wave-back {
+          animation: waveMorphBack 1.7s ease-in-out infinite;
+        }
+      `}</style>
 
-        <div className="flex flex-col w-full gap-8">
-          <EmotionButton
-            label="화가남"
-            count={counts.angry}
-            onClick={() => handleTouch("angry")}
-          />
-          <EmotionButton
-            label="우울함"
-            count={counts.depressed}
-            onClick={() => handleTouch("depressed")}
-          />
-          <EmotionButton
-            label="행복함"
-            count={counts.happy}
-            onClick={() => handleTouch("happy")}
-          />
-        </div>
-
-        {/* 최근 기록 표시 영역 (Supabase 연동) */}
-        {records.length > 0 && (
-          <div className="w-full mt-16 pt-8 border-t border-gray-100 dark:border-gray-900">
-            <h2 className="text-sm font-medium text-gray-500 mb-4 px-2">최근 기록</h2>
-            <div className="flex flex-col gap-3">
-              {records.map((record) => (
-                <div key={record.id} className="flex justify-between items-center px-4 py-3 rounded-2xl bg-gray-50 dark:bg-zinc-900/50">
-                  <span className="text-base text-gray-800 dark:text-gray-200">
-                    {record.emotion}
-                  </span>
-                  <span className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    {record.tap_count}회
-                  </span>
-                </div>
-              ))}
-            </div>
+      {/* 바닥에서 위로 차오르는 색상 영역 */}
+      <div 
+        className={`absolute bottom-0 left-0 w-full transition-all duration-75 ease-out ${
+          activeEmotion ? emotionColors[activeEmotion] : "bg-transparent"
+        }`}
+        style={{
+          height: `${fillHeight}%`
+        }}
+      >
+        {/* 제자리에서 파형이 변하는 상단 물결 SVG */}
+        {activeEmotion && (
+          <div 
+            className="absolute top-0 left-0 w-full h-[24px] -translate-y-full pointer-events-none transition-opacity duration-300"
+            style={{ opacity: fillHeight > 0 ? 1 : 0 }}
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 400 20" 
+              preserveAspectRatio="none" 
+              className="w-full h-full"
+            >
+              {/* 뒤쪽 물결 (반대 위상) */}
+              <path 
+                fill={emotionHex[activeEmotion]} 
+                opacity="0.5" 
+                className="animate-wave-back"
+                style={{ transformOrigin: "50% 100%" }}
+                d="M 0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
+              />
+              {/* 앞쪽 물결 (정방향 위상) */}
+              <path 
+                fill={emotionHex[activeEmotion]} 
+                opacity="1" 
+                className="animate-wave-front"
+                style={{ transformOrigin: "50% 100%" }}
+                d="M 0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
+              />
+            </svg>
           </div>
         )}
-      </main>
+      </div>
+
+      {/* 화면 전체 터치 영역 */}
+      {activeEmotion && (
+        <div 
+          className="absolute inset-0 z-20 cursor-pointer"
+          onPointerDown={(e) => {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+            handleTouch(activeEmotion);
+          }}
+        />
+      )}
+
+      {/* 초기 화면: 버튼 3개 표시 */}
+      {!activeEmotion && (
+        <div className="absolute inset-0 flex flex-col items-center justify-between px-6 py-12 z-10">
+          <h1 className="text-2xl font-light tracking-wide mt-8 pointer-events-none">
+            지금 내 마음은?
+          </h1>
+
+          <div className="flex w-full max-w-sm gap-4 pb-8">
+            <EmotionButton
+              label="화남"
+              onPress={() => handleTouch("angry")}
+            />
+            <EmotionButton
+              label="우울"
+              onPress={() => handleTouch("depressed")}
+            />
+            <EmotionButton
+              label="행복"
+              onPress={() => handleTouch("happy")}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function EmotionButton({
   label,
-  count,
-  onClick,
+  onPress,
 }: {
   label: string;
-  count: number;
-  onClick: () => void;
+  onPress: () => void;
 }) {
   return (
     <button
-      onClick={onClick}
-      className="relative flex items-center justify-center w-full py-8 rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-black shadow-sm transition-transform duration-100 active:scale-95 active:bg-gray-50 dark:active:bg-gray-900"
+      onPointerDown={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+        onPress();
+      }}
+      className="flex-1 py-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-zinc-900 shadow-sm transition-transform duration-75 active:scale-90"
     >
-      <span className="text-xl font-medium tracking-wide">{label}</span>
-      {count > 0 && (
-        <span className="absolute right-6 text-sm text-gray-400 font-light">
-          {count}
-        </span>
-      )}
+      <span className="text-lg font-medium tracking-wide pointer-events-none">{label}</span>
     </button>
   );
 }
