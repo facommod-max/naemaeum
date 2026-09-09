@@ -29,6 +29,8 @@ const emotionHex: Record<Emotion, string> = {
 export default function Home() {
   const [activeEmotion, setActiveEmotion] = useState<Emotion | null>(null);
   const [tapCount, setTapCount] = useState(0);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [isCheckingUser, setIsCheckingUser] = useState(true);
   
   // 상태 업데이트 지연 방지를 위한 useRef 관리
   const tapCountRef = useRef(0);
@@ -107,9 +109,11 @@ export default function Home() {
 
     const emotionName = emotionLabels[emotion];
     const recordedAt = new Date().toISOString();
+    const currentUserId = localStorage.getItem("user_id");
 
     // Supabase에 저장 (화면 표시 안함)
     const { error } = await supabase.from("emotion_records").insert({
+      user_id: currentUserId ? Number(currentUserId) : null,
       emotion: emotionName,
       tap_count: finalCount,
       recorded_at: recordedAt,
@@ -134,6 +138,14 @@ export default function Home() {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem("user_id");
+    if (storedUserId) {
+      setUserId(Number(storedUserId));
+    }
+    setIsCheckingUser(false);
   }, []);
 
   // 높이 계산 로직 (새로운 체감 곡선 적용 및 후반부 100% 도달 보정)
@@ -212,8 +224,45 @@ export default function Home() {
         />
       )}
 
+      {/* 사용자 체크 중 흰 배경 */}
+      {isCheckingUser && <div className="absolute inset-0 z-40 bg-white" />}
+
+      {/* 사용자 선택 화면 */}
+      {!userId && !isCheckingUser && (
+        <div className="absolute inset-0 flex flex-col z-30 bg-white">
+          <div className="flex-none h-[80px] flex items-center px-6">
+            <div className="text-lg font-bold tracking-wide text-black pointer-events-none">
+              naemaum
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center -mt-20">
+            <h2 className="text-2xl font-bold text-black mb-12 pointer-events-none">누구예요?</h2>
+            <div className="flex flex-row gap-8">
+              {[
+                { id: 1, name: "심보성", avatar: "/avatars/simbosung.png" },
+                { id: 2, name: "정주희", avatar: "/avatars/jeongjuhee.png" },
+                { id: 3, name: "허혜란", avatar: "/avatars/heohyeran.png" },
+              ].map((u) => (
+                <button
+                  key={u.id}
+                  className="flex flex-col items-center gap-4 transition-transform active:scale-95"
+                  onClick={() => {
+                    localStorage.setItem("user_id", String(u.id));
+                    localStorage.setItem("user_name", u.name);
+                    setUserId(u.id);
+                  }}
+                >
+                  <img src={u.avatar} alt={u.name} className="w-20 h-20 rounded-full object-cover select-none pointer-events-none" draggable={false} />
+                  <span className="text-lg font-bold text-black pointer-events-none">{u.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 초기 화면: 3등분 감정 선택 */}
-      {!activeEmotion && (
+      {userId && !activeEmotion && (
         <div className="absolute inset-0 flex flex-col z-10 bg-white">
           {/* 상단 헤더 영역 */}
           <div className="flex-none h-[80px] flex items-center justify-between px-6 bg-white z-20 relative">
