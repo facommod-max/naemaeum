@@ -35,7 +35,6 @@ export default function Home() {
   const activeEmotionRef = useRef<Emotion | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const tiltContainerRef = useRef<HTMLDivElement>(null);
 
   const playTickSound = () => {
     try {
@@ -76,22 +75,6 @@ export default function Home() {
   const handleTouch = (emotion: Emotion) => {
     // 터치 효과음 재생
     playTickSound();
-
-    // 수면 기울어짐 추가 반응 (WAAPI 애니메이션)
-    if (tiltContainerRef.current) {
-      tiltContainerRef.current.getAnimations().filter(a => a.id === "touch-tilt").forEach(anim => anim.cancel());
-      
-      const tiltDir = tapCountRef.current % 2 === 0 ? 3 : -3;
-      
-      tiltContainerRef.current.animate(
-        [
-          { transform: 'rotate(0deg)' },
-          { transform: `rotate(${tiltDir}deg)` },
-          { transform: 'rotate(0deg)' }
-        ],
-        { duration: 250, easing: 'ease-out', composite: 'add', id: 'touch-tilt' }
-      );
-    }
 
     const isDifferentEmotion = activeEmotionRef.current !== emotion;
 
@@ -153,12 +136,21 @@ export default function Home() {
     };
   }, []);
 
-  // 높이 계산 로직 (새로운 체감 곡선 적용)
+  // 높이 계산 로직 (새로운 체감 곡선 적용 및 후반부 100% 도달 보정)
   const calculateHeight = () => {
     if (tapCount === 0 || !activeEmotion) return 0;
     
-    // 1회 약 4.4%, 10회 약 25%, 50회 약 65%, 100회 약 84%, 200회 이상 95% 이상에 수렴하는 자연스러운 곡선
-    const height = 100 * (1 - Math.exp(-Math.pow(tapCount, 0.8) / 22));
+    // 기본 곡선 (100회에서 약 88%)
+    let height = 100 * (1 - Math.exp(-Math.pow(tapCount, 0.9) / 30));
+    
+    // 100회 이후 구간부터 180회에 정확히 100%에 도달하도록 선형 보정 가산
+    if (tapCount >= 180) {
+      height = 100;
+    } else if (tapCount > 100) {
+      const progress = (tapCount - 100) / 80; // 0 ~ 1
+      height += progress * 3; // 180회일 때 부족한 약 3%를 채워서 100%로 만듦
+    }
+    
     return Math.min(height, 100);
   };
 
@@ -188,7 +180,6 @@ export default function Home() {
         }}
       >
         <div 
-          ref={tiltContainerRef}
           className={`w-full h-full origin-top animate-tilt transition-opacity duration-300 ${
             activeEmotion ? emotionColors[activeEmotion] : "bg-transparent opacity-0"
           }`}
