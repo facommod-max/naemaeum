@@ -157,7 +157,7 @@ export default function Home() {
   const fillHeight = calculateHeight();
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-[#F1F1F1] select-none touch-none">
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-white select-none touch-none">
       
       {/* 부드럽게 좌우로 기울어지는 수면 애니메이션 */}
       <style>{`
@@ -212,45 +212,44 @@ export default function Home() {
         />
       )}
 
-      {/* 초기 화면: 카드 기반 감정 선택 */}
+      {/* 초기 화면: 3등분 감정 선택 */}
       {!activeEmotion && (
-        <div className="absolute inset-0 flex flex-col px-6 pt-5 pb-12 z-10">
+        <div className="absolute inset-0 flex flex-col z-10 bg-white">
           {/* 상단 미니멀 로고 */}
-          <div className="text-lg font-bold tracking-wide pointer-events-none">
+          <div className="absolute top-5 left-6 text-lg font-bold tracking-wide pointer-events-none z-20 text-black">
             naemaum
           </div>
 
-          {/* 감정 카드 리스트 */}
-          <div className="flex-1 flex flex-col justify-center gap-3 w-full max-w-sm mx-auto">
-            <EmotionCardButton
-              src="/emotions/angry.png"
-              label="화난다"
-              onPress={() => handleTouch("angry")}
-            />
-            <EmotionCardButton
-              src="/emotions/sad.png"
-              label="우울하다"
-              onPress={() => handleTouch("depressed")}
-            />
-            <EmotionCardButton
-              src="/emotions/happy.png"
-              label="행복하다"
-              onPress={() => handleTouch("happy")}
-            />
-          </div>
+          <EmotionSectionButton
+            label="화난다"
+            activeColorClass="active:bg-red-500 active:text-white"
+            onPress={() => handleTouch("angry")}
+          />
+          <div className="w-full h-[1px] bg-black shrink-0" />
+          <EmotionSectionButton
+            label="우울해"
+            activeColorClass="active:bg-purple-500 active:text-white"
+            onPress={() => handleTouch("depressed")}
+          />
+          <div className="w-full h-[1px] bg-black shrink-0" />
+          <EmotionSectionButton
+            label="행복해"
+            activeColorClass="active:bg-green-500 active:text-white"
+            onPress={() => handleTouch("happy")}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function EmotionCardButton({
-  src,
+function EmotionSectionButton({
   label,
+  activeColorClass,
   onPress,
 }: {
-  src: string;
   label: string;
+  activeColorClass: string;
   onPress: () => void;
 }) {
   return (
@@ -259,15 +258,9 @@ function EmotionCardButton({
         e.currentTarget.releasePointerCapture(e.pointerId);
         onPress();
       }}
-      className="flex items-center w-full bg-white rounded-[8px] px-6 py-4 transition-transform duration-75 active:scale-95"
+      className={`flex-1 w-full flex items-center justify-center bg-white text-black transition-colors duration-75 ${activeColorClass}`}
     >
-      <img 
-        src={src} 
-        alt={label} 
-        className="w-20 h-20 object-contain pointer-events-none select-none"
-        draggable={false}
-      />
-      <span className="ml-6 text-xl font-bold text-black pointer-events-none">
+      <span className="text-5xl font-bold pointer-events-none">
         {label}
       </span>
     </button>
