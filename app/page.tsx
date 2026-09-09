@@ -203,41 +203,28 @@ export default function Home() {
         />
       )}
 
-      {/* 초기 화면: 로고, 문구, 버튼 3개 표시 */}
+      {/* 초기 화면: 텍스트 기반 감정 선택 */}
       {!activeEmotion && (
-        <div className="absolute inset-0 flex flex-col px-6 pt-12 pb-12 z-10">
-          {/* 상단 텍스트 영역 */}
-          <div className="flex-none">
-            {/* 상단 로고 */}
-            <div className="text-2xl font-black tracking-tighter mb-12 pointer-events-none">
-              NAEMAUM
-            </div>
-
-            {/* 메인 문구 */}
-            <h1 className="text-4xl font-extrabold tracking-tight pointer-events-none">
-              지금 기분 어때?
-            </h1>
+        <div className="absolute inset-0 flex flex-col px-6 pt-8 pb-12 z-10">
+          {/* 상단 미니멀 로고 */}
+          <div className="text-lg font-medium tracking-wide pointer-events-none">
+            naemaum
           </div>
 
-          {/* 감정 원형 버튼 (남은 여백의 정중앙 배치) */}
-          <div className="flex-1 flex flex-col justify-center w-full max-w-[400px] mx-auto">
-            <div className="flex w-full justify-between gap-4">
-              <EmotionCircleButton
-                label="화남"
-                colorClass="bg-red-500 text-white"
-                onPress={() => handleTouch("angry")}
-              />
-              <EmotionCircleButton
-                label="우울"
-                colorClass="bg-purple-500 text-white"
-                onPress={() => handleTouch("depressed")}
-              />
-              <EmotionCircleButton
-                label="행복"
-                colorClass="bg-green-500 text-white"
-                onPress={() => handleTouch("happy")}
-              />
-            </div>
+          {/* 감정 텍스트 리스트 (화면 정중앙) */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-12 w-full">
+            <EmotionTextButton
+              label="화가나!"
+              onPress={() => handleTouch("angry")}
+            />
+            <EmotionTextButton
+              label="우울해!"
+              onPress={() => handleTouch("depressed")}
+            />
+            <EmotionTextButton
+              label="행복해!"
+              onPress={() => handleTouch("happy")}
+            />
           </div>
         </div>
       )}
@@ -245,13 +232,11 @@ export default function Home() {
   );
 }
 
-function EmotionCircleButton({
+function EmotionTextButton({
   label,
-  colorClass,
   onPress,
 }: {
   label: string;
-  colorClass: string;
   onPress: () => void;
 }) {
   return (
@@ -260,9 +245,9 @@ function EmotionCircleButton({
         e.currentTarget.releasePointerCapture(e.pointerId);
         onPress();
       }}
-      className={`flex items-center justify-center flex-1 max-w-[115px] aspect-square rounded-full ${colorClass} transition-transform duration-75 active:scale-90`}
+      className="px-12 py-6 transition-transform duration-75 active:scale-95"
     >
-      <span className="text-2xl font-bold tracking-tight pointer-events-none">{label}</span>
+      <span className="text-4xl font-bold tracking-tight pointer-events-none text-black dark:text-white">{label}</span>
     </button>
   );
 }
