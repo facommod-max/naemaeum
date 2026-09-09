@@ -35,7 +35,8 @@ export default function Home() {
   const activeEmotionRef = useRef<Emotion | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const waveContainerRef = useRef<HTMLDivElement>(null);
+  const waveBackRef = useRef<SVGGElement>(null);
+  const waveFrontRef = useRef<SVGGElement>(null);
 
   const playTickSound = () => {
     try {
@@ -77,16 +78,26 @@ export default function Home() {
     // 터치 효과음 재생
     playTickSound();
 
-    // 물결 시각적 출렁임 (WAAPI 애니메이션)
-    if (waveContainerRef.current) {
-      waveContainerRef.current.getAnimations().forEach(anim => anim.cancel());
-      waveContainerRef.current.animate(
+    // 물결 시각적 출렁임 (독립적인 2중 진폭 확대)
+    if (waveBackRef.current && waveFrontRef.current) {
+      waveBackRef.current.getAnimations().forEach(anim => anim.cancel());
+      waveBackRef.current.animate(
         [
-          { transform: 'translateY(0)' },
-          { transform: 'translateY(-12px)' },
-          { transform: 'translateY(0)' }
+          { transform: 'scaleY(1)' },
+          { transform: 'scaleY(1.8)' },
+          { transform: 'scaleY(1)' }
         ],
-        { duration: 150, easing: 'ease-out' }
+        { duration: 160, easing: 'ease-out' }
+      );
+
+      waveFrontRef.current.getAnimations().forEach(anim => anim.cancel());
+      waveFrontRef.current.animate(
+        [
+          { transform: 'scaleY(1)' },
+          { transform: 'scaleY(1.4)' },
+          { transform: 'scaleY(1)' }
+        ],
+        { duration: 120, easing: 'ease-out' }
       );
     }
 
@@ -197,7 +208,7 @@ export default function Home() {
             className="absolute top-0 left-0 w-full h-[24px] -translate-y-full pointer-events-none transition-opacity duration-300"
             style={{ opacity: fillHeight > 0 ? 1 : 0 }}
           >
-            <div ref={waveContainerRef} className="w-full h-full">
+            <div className="w-full h-full">
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
                 viewBox="0 0 400 20" 
@@ -205,21 +216,25 @@ export default function Home() {
                 className="w-full h-full"
               >
                 {/* 뒤쪽 물결 (반대 위상) */}
-                <path 
-                  fill={emotionHex[activeEmotion]} 
-                  opacity="0.5" 
-                  className="animate-wave-back"
-                  style={{ transformOrigin: "50% 100%" }}
-                  d="M 0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
-                />
+                <g ref={waveBackRef} style={{ transformOrigin: "50% 100%" }}>
+                  <path 
+                    fill={emotionHex[activeEmotion]} 
+                    opacity="0.5" 
+                    className="animate-wave-back"
+                    style={{ transformOrigin: "50% 100%" }}
+                    d="M 0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
+                  />
+                </g>
                 {/* 앞쪽 물결 (정방향 위상) */}
-                <path 
-                  fill={emotionHex[activeEmotion]} 
-                  opacity="1" 
-                  className="animate-wave-front"
-                  style={{ transformOrigin: "50% 100%" }}
-                  d="M 0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
-                />
+                <g ref={waveFrontRef} style={{ transformOrigin: "50% 100%" }}>
+                  <path 
+                    fill={emotionHex[activeEmotion]} 
+                    opacity="1" 
+                    className="animate-wave-front"
+                    style={{ transformOrigin: "50% 100%" }}
+                    d="M 0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
+                  />
+                </g>
               </svg>
             </div>
           </div>
