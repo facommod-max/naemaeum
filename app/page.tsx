@@ -34,11 +34,60 @@ export default function Home() {
   const tapCountRef = useRef(0);
   const activeEmotionRef = useRef<Emotion | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const waveContainerRef = useRef<HTMLDivElement>(null);
+
+  const playTickSound = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          audioCtxRef.current = new AudioContext();
+        }
+      }
+      
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.04);
+
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.04);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.05);
+    } catch (e) {
+      console.error("Audio playback error:", e);
+    }
+  };
 
   const handleTouch = (emotion: Emotion) => {
-    // 진동 피드백
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(20); 
+    // 터치 효과음 재생
+    playTickSound();
+
+    // 물결 시각적 출렁임 (WAAPI 애니메이션)
+    if (waveContainerRef.current) {
+      waveContainerRef.current.getAnimations().forEach(anim => anim.cancel());
+      waveContainerRef.current.animate(
+        [
+          { transform: 'translateY(0)' },
+          { transform: 'translateY(-12px)' },
+          { transform: 'translateY(0)' }
+        ],
+        { duration: 150, easing: 'ease-out' }
+      );
     }
 
     const isDifferentEmotion = activeEmotionRef.current !== emotion;
@@ -148,29 +197,31 @@ export default function Home() {
             className="absolute top-0 left-0 w-full h-[24px] -translate-y-full pointer-events-none transition-opacity duration-300"
             style={{ opacity: fillHeight > 0 ? 1 : 0 }}
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              viewBox="0 0 400 20" 
-              preserveAspectRatio="none" 
-              className="w-full h-full"
-            >
-              {/* 뒤쪽 물결 (반대 위상) */}
-              <path 
-                fill={emotionHex[activeEmotion]} 
-                opacity="0.5" 
-                className="animate-wave-back"
-                style={{ transformOrigin: "50% 100%" }}
-                d="M 0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
-              />
-              {/* 앞쪽 물결 (정방향 위상) */}
-              <path 
-                fill={emotionHex[activeEmotion]} 
-                opacity="1" 
-                className="animate-wave-front"
-                style={{ transformOrigin: "50% 100%" }}
-                d="M 0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
-              />
-            </svg>
+            <div ref={waveContainerRef} className="w-full h-full">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 400 20" 
+                preserveAspectRatio="none" 
+                className="w-full h-full"
+              >
+                {/* 뒤쪽 물결 (반대 위상) */}
+                <path 
+                  fill={emotionHex[activeEmotion]} 
+                  opacity="0.5" 
+                  className="animate-wave-back"
+                  style={{ transformOrigin: "50% 100%" }}
+                  d="M 0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
+                />
+                {/* 앞쪽 물결 (정방향 위상) */}
+                <path 
+                  fill={emotionHex[activeEmotion]} 
+                  opacity="1" 
+                  className="animate-wave-front"
+                  style={{ transformOrigin: "50% 100%" }}
+                  d="M 0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
+                />
+              </svg>
+            </div>
           </div>
         )}
       </div>
