@@ -35,8 +35,7 @@ export default function Home() {
   const activeEmotionRef = useRef<Emotion | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const waveBackRef = useRef<SVGGElement>(null);
-  const waveFrontRef = useRef<SVGGElement>(null);
+  const tiltContainerRef = useRef<HTMLDivElement>(null);
 
   const playTickSound = () => {
     try {
@@ -78,26 +77,19 @@ export default function Home() {
     // 터치 효과음 재생
     playTickSound();
 
-    // 물결 시각적 출렁임 (독립적인 2중 진폭 확대)
-    if (waveBackRef.current && waveFrontRef.current) {
-      waveBackRef.current.getAnimations().forEach(anim => anim.cancel());
-      waveBackRef.current.animate(
+    // 수면 기울어짐 추가 반응 (WAAPI 애니메이션)
+    if (tiltContainerRef.current) {
+      tiltContainerRef.current.getAnimations().filter(a => a.id === "touch-tilt").forEach(anim => anim.cancel());
+      
+      const tiltDir = tapCountRef.current % 2 === 0 ? 3 : -3;
+      
+      tiltContainerRef.current.animate(
         [
-          { transform: 'scaleY(1)' },
-          { transform: 'scaleY(1.8)' },
-          { transform: 'scaleY(1)' }
+          { transform: 'rotate(0deg)' },
+          { transform: `rotate(${tiltDir}deg)` },
+          { transform: 'rotate(0deg)' }
         ],
-        { duration: 160, easing: 'ease-out' }
-      );
-
-      waveFrontRef.current.getAnimations().forEach(anim => anim.cancel());
-      waveFrontRef.current.animate(
-        [
-          { transform: 'scaleY(1)' },
-          { transform: 'scaleY(1.4)' },
-          { transform: 'scaleY(1)' }
-        ],
-        { duration: 120, easing: 'ease-out' }
+        { duration: 250, easing: 'ease-out', composite: 'add', id: 'touch-tilt' }
       );
     }
 
@@ -175,70 +167,33 @@ export default function Home() {
   return (
     <div className="relative w-full h-[100dvh] bg-white dark:bg-black overflow-hidden select-none touch-none text-black dark:text-white">
       
-      {/* 제자리에서 위아래로 출렁이는 2개의 물결 레이어 애니메이션 */}
+      {/* 부드럽게 좌우로 기울어지는 수면 애니메이션 */}
       <style>{`
-        @keyframes waveMorphFront {
-          0%, 100% { transform: scaleY(1); }
-          50% { transform: scaleY(0.35); }
+        @keyframes tiltWater {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(1.5deg); }
+          75% { transform: rotate(-1.5deg); }
         }
-        @keyframes waveMorphBack {
-          0%, 100% { transform: scaleY(0.4); }
-          50% { transform: scaleY(1.25); }
-        }
-        .animate-wave-front {
-          animation: waveMorphFront 1.2s ease-in-out infinite;
-        }
-        .animate-wave-back {
-          animation: waveMorphBack 1.7s ease-in-out infinite;
+        .animate-tilt {
+          animation: tiltWater 1.4s ease-in-out infinite;
         }
       `}</style>
 
-      {/* 바닥에서 위로 차오르는 색상 영역 */}
+      {/* 바닥에서 위로 차오르는 색상 영역 (회전 시 빈 공간 방지를 위해 좌우와 하단 여백 추가) */}
       <div 
-        className={`absolute bottom-0 left-0 w-full transition-all duration-75 ease-out ${
-          activeEmotion ? emotionColors[activeEmotion] : "bg-transparent"
-        }`}
+        className="absolute left-[-10%] w-[120%] transition-all duration-75 ease-out pointer-events-none"
         style={{
-          height: `${fillHeight}%`
+          height: `calc(${fillHeight}% + 100px)`,
+          bottom: '-100px'
         }}
       >
-        {/* 제자리에서 파형이 변하는 상단 물결 SVG */}
-        {activeEmotion && (
-          <div 
-            className="absolute top-0 left-0 w-full h-[24px] -translate-y-full pointer-events-none transition-opacity duration-300"
-            style={{ opacity: fillHeight > 0 ? 1 : 0 }}
-          >
-            <div className="w-full h-full">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 400 20" 
-                preserveAspectRatio="none" 
-                className="w-full h-full"
-              >
-                {/* 뒤쪽 물결 (반대 위상) */}
-                <g ref={waveBackRef} style={{ transformOrigin: "50% 100%" }}>
-                  <path 
-                    fill={emotionHex[activeEmotion]} 
-                    opacity="0.5" 
-                    className="animate-wave-back"
-                    style={{ transformOrigin: "50% 100%" }}
-                    d="M 0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
-                  />
-                </g>
-                {/* 앞쪽 물결 (정방향 위상) */}
-                <g ref={waveFrontRef} style={{ transformOrigin: "50% 100%" }}>
-                  <path 
-                    fill={emotionHex[activeEmotion]} 
-                    opacity="1" 
-                    className="animate-wave-front"
-                    style={{ transformOrigin: "50% 100%" }}
-                    d="M 0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 T 250 10 T 300 10 T 350 10 T 400 10 L 400 20 L 0 20 Z" 
-                  />
-                </g>
-              </svg>
-            </div>
-          </div>
-        )}
+        <div 
+          ref={tiltContainerRef}
+          className={`w-full h-full origin-top animate-tilt transition-opacity duration-300 ${
+            activeEmotion ? emotionColors[activeEmotion] : "bg-transparent opacity-0"
+          }`}
+          style={{ opacity: fillHeight > 0 ? 1 : 0 }}
+        />
       </div>
 
       {/* 화면 전체 터치 영역 */}
