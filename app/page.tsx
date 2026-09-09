@@ -157,7 +157,7 @@ export default function Home() {
   const fillHeight = calculateHeight();
 
   return (
-    <div className="relative w-full h-[100dvh] bg-white dark:bg-black overflow-hidden select-none touch-none text-black dark:text-white">
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-[#F1F1F1] select-none touch-none">
       
       {/* 부드럽게 좌우로 기울어지는 수면 애니메이션 */}
       <style>{`
@@ -212,7 +212,7 @@ export default function Home() {
         />
       )}
 
-      {/* 초기 화면: 이미지 기반 감정 선택 */}
+      {/* 초기 화면: 카드 기반 감정 선택 */}
       {!activeEmotion && (
         <div className="absolute inset-0 flex flex-col px-6 pt-5 pb-12 z-10">
           {/* 상단 미니멀 로고 */}
@@ -220,21 +220,21 @@ export default function Home() {
             naemaum
           </div>
 
-          {/* 감정 이미지 리스트 (화면 정중앙) */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-8 w-full max-w-sm mx-auto">
-            <EmotionImageButton
+          {/* 감정 카드 리스트 */}
+          <div className="flex-1 flex flex-col justify-center gap-3 w-full max-w-sm mx-auto">
+            <EmotionCardButton
               src="/emotions/angry.png"
-              alt="화가나"
+              label="화난다"
               onPress={() => handleTouch("angry")}
             />
-            <EmotionImageButton
+            <EmotionCardButton
               src="/emotions/sad.png"
-              alt="우울해"
+              label="우울하다"
               onPress={() => handleTouch("depressed")}
             />
-            <EmotionImageButton
+            <EmotionCardButton
               src="/emotions/happy.png"
-              alt="행복해"
+              label="행복하다"
               onPress={() => handleTouch("happy")}
             />
           </div>
@@ -244,13 +244,13 @@ export default function Home() {
   );
 }
 
-function EmotionImageButton({
+function EmotionCardButton({
   src,
-  alt,
+  label,
   onPress,
 }: {
   src: string;
-  alt: string;
+  label: string;
   onPress: () => void;
 }) {
   return (
@@ -259,14 +259,17 @@ function EmotionImageButton({
         e.currentTarget.releasePointerCapture(e.pointerId);
         onPress();
       }}
-      className="p-4 transition-transform duration-75 active:scale-95"
+      className="flex items-center w-full bg-white rounded-[8px] px-6 py-4 transition-transform duration-75 active:scale-95"
     >
       <img 
         src={src} 
-        alt={alt} 
-        className="w-[120px] h-[120px] object-contain pointer-events-none select-none"
+        alt={label} 
+        className="w-20 h-20 object-contain pointer-events-none select-none"
         draggable={false}
       />
+      <span className="ml-6 text-xl font-bold text-black pointer-events-none">
+        {label}
+      </span>
     </button>
   );
 }
