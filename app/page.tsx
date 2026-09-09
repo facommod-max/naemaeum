@@ -123,11 +123,11 @@ export default function Home() {
     setTapCount(0);
     tapCountRef.current = 0;
     
-    // 부드러운 전환을 위해 약간의 지연 후 감정 초기화 (물이 빠져나가는 애니메이션 시간에 맞춤)
+    // 컬러가 천천히 내려간 후 초기 화면이 나타나도록 2000ms 지연
     setTimeout(() => {
       setActiveEmotion(null);
       activeEmotionRef.current = null;
-    }, 800);
+    }, 2000);
   };
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function Home() {
       {/* 바닥에서 위로 차오르는 색상 영역 (회전 시 빈 공간 방지를 위해 좌우와 하단 여백 추가) */}
       <div 
         className={`absolute left-[-10%] w-[120%] transition-all pointer-events-none ${
-          tapCount === 0 ? "duration-[800ms] ease-in-out" : "duration-75 ease-out"
+          tapCount === 0 ? "duration-[2000ms] ease-in-out" : "duration-75 ease-out"
         }`}
         style={{
           height: `calc(${fillHeight}% + 100px)`,
@@ -182,15 +182,24 @@ export default function Home() {
         }}
       >
         <div 
-          className={`w-full h-full origin-top animate-tilt transition-all duration-150 ${
-            !activeEmotion ? "opacity-0" : ""
-          }`}
+          className={`w-full h-full origin-top animate-tilt transition-all ${
+            tapCount === 0 ? "duration-[2000ms] ease-in-out" : "duration-150 ease-out"
+          } ${!activeEmotion ? "opacity-0" : ""}`}
           style={{ 
-            opacity: fillHeight > 0 ? 1 : 0,
+            opacity: activeEmotion ? 1 : 0,
             backgroundColor: activeEmotion ? `color-mix(in srgb, ${emotionHex[activeEmotion]} ${Math.max(15, fillHeight)}%, #ffffff)` : "transparent"
           }}
         />
       </div>
+
+      {/* 연타 유도 TOUCH 텍스트 */}
+      {activeEmotion && tapCount === 1 && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <span className="text-lg font-bold tracking-wide text-black dark:text-white">
+            TOUCH
+          </span>
+        </div>
+      )}
 
       {/* 화면 전체 터치 영역 */}
       {activeEmotion && (
