@@ -127,7 +127,7 @@ export default function Home() {
     setTimeout(() => {
       setActiveEmotion(null);
       activeEmotionRef.current = null;
-    }, 500);
+    }, 800);
   };
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function Home() {
       {/* 바닥에서 위로 차오르는 색상 영역 (회전 시 빈 공간 방지를 위해 좌우와 하단 여백 추가) */}
       <div 
         className={`absolute left-[-10%] w-[120%] transition-all pointer-events-none ${
-          tapCount === 0 ? "duration-500 ease-in-out" : "duration-75 ease-out"
+          tapCount === 0 ? "duration-[800ms] ease-in-out" : "duration-75 ease-out"
         }`}
         style={{
           height: `calc(${fillHeight}% + 100px)`,
@@ -203,26 +203,29 @@ export default function Home() {
         />
       )}
 
-      {/* 초기 화면: 텍스트 기반 감정 선택 */}
+      {/* 초기 화면: 이미지 기반 감정 선택 */}
       {!activeEmotion && (
-        <div className="absolute inset-0 flex flex-col px-6 pt-8 pb-12 z-10">
+        <div className="absolute inset-0 flex flex-col px-6 pt-5 pb-12 z-10">
           {/* 상단 미니멀 로고 */}
-          <div className="text-lg font-medium tracking-wide pointer-events-none">
+          <div className="text-lg font-bold tracking-wide pointer-events-none">
             naemaum
           </div>
 
-          {/* 감정 텍스트 리스트 (화면 정중앙) */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-12 w-full">
-            <EmotionTextButton
-              label="화가나!"
+          {/* 감정 이미지 리스트 (화면 정중앙) */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-8 w-full max-w-sm mx-auto">
+            <EmotionImageButton
+              src="/emotions/angry.png"
+              alt="화가나"
               onPress={() => handleTouch("angry")}
             />
-            <EmotionTextButton
-              label="우울해!"
+            <EmotionImageButton
+              src="/emotions/sad.png"
+              alt="우울해"
               onPress={() => handleTouch("depressed")}
             />
-            <EmotionTextButton
-              label="행복해!"
+            <EmotionImageButton
+              src="/emotions/happy.png"
+              alt="행복해"
               onPress={() => handleTouch("happy")}
             />
           </div>
@@ -232,11 +235,13 @@ export default function Home() {
   );
 }
 
-function EmotionTextButton({
-  label,
+function EmotionImageButton({
+  src,
+  alt,
   onPress,
 }: {
-  label: string;
+  src: string;
+  alt: string;
   onPress: () => void;
 }) {
   return (
@@ -245,9 +250,14 @@ function EmotionTextButton({
         e.currentTarget.releasePointerCapture(e.pointerId);
         onPress();
       }}
-      className="px-12 py-6 transition-transform duration-75 active:scale-95"
+      className="p-4 transition-transform duration-75 active:scale-95"
     >
-      <span className="text-4xl font-bold tracking-tight pointer-events-none text-black dark:text-white">{label}</span>
+      <img 
+        src={src} 
+        alt={alt} 
+        className="w-[120px] h-[120px] object-contain pointer-events-none select-none"
+        draggable={false}
+      />
     </button>
   );
 }
