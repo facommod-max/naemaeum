@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 // Supabase 클라이언트 초기화
@@ -27,6 +28,7 @@ const emotionHex: Record<Emotion, string> = {
 };
 
 export default function Home() {
+  const router = useRouter();
   const [activeEmotion, setActiveEmotion] = useState<Emotion | null>(null);
   const [tapCount, setTapCount] = useState(0);
   const [userId, setUserId] = useState<number | null>(null);
@@ -269,7 +271,10 @@ export default function Home() {
             <div className="text-lg font-bold tracking-wide pointer-events-none text-black">
               naemaum
             </div>
-            <button className="p-2 -mr-2 text-black active:opacity-50 transition-opacity">
+            <button 
+              className="p-2 -mr-2 text-black active:opacity-50 transition-opacity"
+              onClick={() => router.push('/stats')}
+            >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"></line>
                 <line x1="12" y1="20" x2="12" y2="4"></line>
