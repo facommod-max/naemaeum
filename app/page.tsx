@@ -169,7 +169,7 @@ export default function Home() {
   const fillHeight = calculateHeight();
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-white select-none touch-none">
+    <div className={`relative w-full h-[100dvh] overflow-hidden bg-white select-none ${activeEmotion ? "touch-none" : ""}`}>
       
       {/* 부드럽게 좌우로 기울어지는 수면 애니메이션 */}
       <style>{`
@@ -206,9 +206,9 @@ export default function Home() {
 
       {/* 연타 유도 TOUCH 텍스트 */}
       {activeEmotion && tapCount === 1 && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-          <span className="text-lg font-bold tracking-wide text-black dark:text-white">
-            TOUCH
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none px-6">
+          <span className="text-xl font-bold tracking-tight text-black dark:text-white text-center break-keep">
+            당신의 감정만큼 터치하세요
           </span>
         </div>
       )}
@@ -316,16 +316,18 @@ function EmotionSectionButton({
   onPress: () => void;
 }) {
   return (
-    <button
-      onPointerDown={(e) => {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-        onPress();
-      }}
-      className={`flex-1 w-full flex items-center justify-center bg-white text-black transition-colors duration-75 ${activeColorClass}`}
-    >
-      <span className="text-5xl font-bold pointer-events-none">
-        {label}
-      </span>
-    </button>
+    <div className="flex-1 w-full flex items-center justify-center bg-white">
+      <button
+        onPointerDown={(e) => {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+          onPress();
+        }}
+        className={`px-10 py-6 rounded-2xl text-black transition-colors duration-75 ${activeColorClass}`}
+      >
+        <span className="text-5xl font-bold pointer-events-none">
+          {label}
+        </span>
+      </button>
+    </div>
   );
 }
