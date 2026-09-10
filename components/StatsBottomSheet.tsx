@@ -343,13 +343,13 @@ export default function StatsBottomSheet({
               <div className="mb-14 flex flex-col gap-2">
                 {mindResult ? (
                   <>
-                    <h2 className="text-3xl font-bold text-black tracking-tight">{mindResult.text}</h2>
+                    <h2 className="text-2xl font-bold text-black tracking-tight">{mindResult.text}</h2>
                     <div className="text-sm text-black font-medium mt-1">
                       행복 {mindResult.happyPct}% · 화남 {mindResult.angryPct}% · 우울 {mindResult.depressedPct}%
                     </div>
                   </>
                 ) : (
-                  <h2 className="text-3xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
+                  <h2 className="text-2xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
                 )}
               </div>
 
@@ -357,30 +357,30 @@ export default function StatsBottomSheet({
                 <div className="flex flex-col gap-6 text-black mt-10 border-t border-gray-100 pt-8">
                   {/* 총 기록 */}
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">총 기록</span>
-                    <span className="text-lg font-medium text-gray-700">{stats.totalSessions}회</span>
+                    <span className="text-lg font-bold">총 기록</span>
+                    <span className="text-sm font-medium text-gray-700">{stats.totalSessions}회</span>
                   </div>
 
                   {/* 화남 */}
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">화남</span>
-                    <span className="text-lg font-medium text-gray-700">
+                    <span className="text-lg font-bold">화남</span>
+                    <span className="text-sm font-medium text-gray-700">
                       {stats.emotions.angry.count}회 · {stats.emotions.angry.taps}터치
                     </span>
                   </div>
 
                   {/* 우울 */}
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">우울</span>
-                    <span className="text-lg font-medium text-gray-700">
+                    <span className="text-lg font-bold">우울</span>
+                    <span className="text-sm font-medium text-gray-700">
                       {stats.emotions.depressed.count}회 · {stats.emotions.depressed.taps}터치
                     </span>
                   </div>
 
                   {/* 행복 */}
                   <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold">행복</span>
-                    <span className="text-lg font-medium text-gray-700">
+                    <span className="text-lg font-bold">행복</span>
+                    <span className="text-sm font-medium text-gray-700">
                       {stats.emotions.happy.count}회 · {stats.emotions.happy.taps}터치
                     </span>
                   </div>
