@@ -354,43 +354,37 @@ export default function StatsBottomSheet({
               </div>
 
               {mindResult && (
-                <>
-                  <h3 className="text-xl font-bold mb-8 tracking-tight text-black">
-                    총 {stats.totalSessions}번 기록 · {stats.totalTaps}번 터치
-                  </h3>
-
-                  <div className="flex flex-col gap-10 text-black">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xl font-bold">화남</span>
-                        <span className="text-2xl font-bold text-red-500">{stats.emotions.angry.count}회</span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        <span className="font-bold text-black">{stats.emotions.angry.taps}</span>터치
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xl font-bold">우울</span>
-                        <span className="text-2xl font-bold text-purple-500">{stats.emotions.depressed.count}회</span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        <span className="font-bold text-black">{stats.emotions.depressed.taps}</span>터치
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xl font-bold">행복</span>
-                        <span className="text-2xl font-bold text-green-500">{stats.emotions.happy.count}회</span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        <span className="font-bold text-black">{stats.emotions.happy.taps}</span>터치
-                      </div>
-                    </div>
+                <div className="flex flex-col gap-6 text-black mt-10 border-t border-gray-100 pt-8">
+                  {/* 총 기록 */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold">총 기록</span>
+                    <span className="text-lg font-medium text-gray-700">{stats.totalSessions}회</span>
                   </div>
-                </>
+
+                  {/* 화남 */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold">화남</span>
+                    <span className="text-lg font-medium text-gray-700">
+                      {stats.emotions.angry.count}회 · {stats.emotions.angry.taps}터치
+                    </span>
+                  </div>
+
+                  {/* 우울 */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold">우울</span>
+                    <span className="text-lg font-medium text-gray-700">
+                      {stats.emotions.depressed.count}회 · {stats.emotions.depressed.taps}터치
+                    </span>
+                  </div>
+
+                  {/* 행복 */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xl font-bold">행복</span>
+                    <span className="text-lg font-medium text-gray-700">
+                      {stats.emotions.happy.count}회 · {stats.emotions.happy.taps}터치
+                    </span>
+                  </div>
+                </div>
               )}
             </>
           )}
