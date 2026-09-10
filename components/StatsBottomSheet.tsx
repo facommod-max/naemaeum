@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 const supabase = createClient();
@@ -34,9 +34,12 @@ export default function StatsBottomSheet({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
   
   const [todayData, setTodayData] = useState<any[]>([]);
   const [weekData, setWeekData] = useState<any[]>([]);
+
+  const [animatingDir, setAnimatingDir] = useState<'left' | 'right' | null>(null);
 
   const getKstTodayStr = () => {
     const now = new Date();
@@ -51,16 +54,19 @@ export default function StatsBottomSheet({
   useEffect(() => {
     if (isOpen && userId) {
       if (activeTab === 'today') {
+        setWeekOffset(0);
         setSelectedDate(getKstTodayStr());
-        fetchData('today', userId);
+        fetchData('today', userId, 0);
       } else {
-        if (!selectedDate) setSelectedDate(getKstTodayStr());
-        fetchData('week', userId);
+        if (weekOffset === 0 && !selectedDate) {
+          setSelectedDate(getKstTodayStr());
+        }
+        fetchData('week', userId, weekOffset);
       }
     }
-  }, [isOpen, userId, activeTab]);
+  }, [isOpen, userId, activeTab, weekOffset]);
 
-  const fetchData = async (tab: 'today' | 'week', uid: number) => {
+  const fetchData = async (tab: 'today' | 'week', uid: number, offset: number) => {
     setIsLoading(true);
     try {
       const now = new Date();
@@ -73,7 +79,7 @@ export default function StatsBottomSheet({
       if (tab === 'week') {
         const day = kstDate.getDay();
         const diffToMonday = kstDate.getDate() - day + (day === 0 ? -6 : 1);
-        start.setDate(diffToMonday);
+        start.setDate(diffToMonday + offset * 7);
         end = new Date(start);
         end.setDate(start.getDate() + 6);
       }
@@ -109,6 +115,7 @@ export default function StatsBottomSheet({
       console.error(e);
     } finally {
       setIsLoading(false);
+      setAnimatingDir(null); // finish anim
     }
   };
 
@@ -204,7 +211,7 @@ export default function StatsBottomSheet({
     const kstDate = new Date(kstStr);
 
     const day = kstDate.getDay();
-    const diffToMonday = kstDate.getDate() - day + (day === 0 ? -6 : 1);
+    const diffToMonday = kstDate.getDate() - day + (day === 0 ? -6 : 1) + weekOffset * 7;
     
     const days = [];
     const names = ['월', '화', '수', '목', '금', '토', '일'];
@@ -275,6 +282,75 @@ export default function StatsBottomSheet({
     return computeStats(records, 'day');
   }, [weekData, selectedDate]);
 
+  // Swipe handling
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const deltaX = touchStartX.current - touchEndX;
+    const deltaY = touchStartY.current - touchEndY;
+
+    // 수평 이동량이 충분하고 세로 이동량보다 클 때만 스와이프 판정
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX > 0) {
+        // swipe left -> next week
+        changeWeek(1);
+      } else {
+        // swipe right -> prev week
+        changeWeek(-1);
+      }
+    }
+
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const changeWeek = (direction: number) => {
+    if (animatingDir) return; // prevent multi swipe
+    setAnimatingDir(direction > 0 ? 'left' : 'right');
+    const newOffset = weekOffset + direction;
+    setWeekOffset(newOffset);
+    
+    const now = new Date();
+    const kstStr = now.toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+    const kstDate = new Date(kstStr);
+
+    if (newOffset === 0) {
+      const y = kstDate.getFullYear();
+      const m = String(kstDate.getMonth() + 1).padStart(2, '0');
+      const d = String(kstDate.getDate()).padStart(2, '0');
+      setSelectedDate(`${y}-${m}-${d}`);
+    } else {
+      const day = kstDate.getDay();
+      const diffToMonday = kstDate.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(kstDate);
+      mon.setDate(diffToMonday + newOffset * 7);
+      const y = mon.getFullYear();
+      const m = String(mon.getMonth() + 1).padStart(2, '0');
+      const d = String(mon.getDate()).padStart(2, '0');
+      setSelectedDate(`${y}-${m}-${d}`);
+    }
+  };
+
+  // 캘린더 애니메이션 클래스 계산
+  const getCalendarAnimClass = () => {
+    if (!animatingDir) return 'transform translate-x-0 opacity-100 transition-none';
+    if (animatingDir === 'left') {
+      return 'transform -translate-x-4 opacity-0 transition-all duration-300';
+    }
+    return 'transform translate-x-4 opacity-0 transition-all duration-300';
+  };
+
   return (
     <>
       <div 
@@ -306,7 +382,7 @@ export default function StatsBottomSheet({
             >주간</button>
           </div>
 
-          {isLoading ? (
+          {isLoading && !animatingDir ? (
             <div className="w-full h-32 flex items-center justify-center text-gray-400">
               ...
             </div>
@@ -366,7 +442,11 @@ export default function StatsBottomSheet({
 
               {activeTab === 'week' && (
                 <>
-                  <div className="w-full flex flex-row justify-between mb-10 text-black">
+                  <div 
+                    className={`w-full flex flex-row justify-between mb-10 text-black ${getCalendarAnimClass()}`}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                  >
                     {getWeekDays().map((d) => {
                       const isSelected = selectedDate === d.fullDateStr;
                       return (
@@ -403,11 +483,11 @@ export default function StatsBottomSheet({
 
                   {/* Day Box */}
                   <div className="bg-[#F5F5F5] rounded-lg p-6 w-full flex flex-col mt-4">
-                    <span className="text-sm font-bold text-black mb-4 block">
+                    <span className="text-sm font-bold text-black mb-3 block">
                       {getFormattedSelectedDate()}
                     </span>
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1">
                       {weekDayComputed.mindResult ? (
                         <>
                           <h2 className="text-2xl font-bold text-black tracking-tight">{weekDayComputed.mindResult.text}</h2>
@@ -421,7 +501,7 @@ export default function StatsBottomSheet({
                     </div>
 
                     {weekDayComputed.mindResult && (
-                      <div className="flex flex-col gap-6 text-black mt-8 border-t border-gray-200 pt-6">
+                      <div className="flex flex-col gap-4 text-black mt-6 border-t border-gray-200 pt-5">
                         {/* 총 기록 */}
                         <div className="flex items-center justify-between">
                           <span className="text-lg font-bold">총 기록</span>
