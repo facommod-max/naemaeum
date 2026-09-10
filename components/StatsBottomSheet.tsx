@@ -23,7 +23,15 @@ export default function StatsBottomSheet({
   onClose: () => void;
   userId: number | null;
 }) {
+  type MindResult = {
+    text: string;
+    angryPct: number;
+    depressedPct: number;
+    happyPct: number;
+  } | null;
+
   const [isLoading, setIsLoading] = useState(true);
+  const [mindResult, setMindResult] = useState<MindResult>(null);
   const [stats, setStats] = useState<StatsData>({
     totalSessions: 0,
     emotions: {
@@ -72,11 +80,22 @@ export default function StatsBottomSheet({
         },
       };
 
+      let angryWeight = 0;
+      let depressedWeight = 0;
+      let happyWeight = 0;
+
       data.forEach((record) => {
         let key: keyof StatsData["emotions"] | null = null;
-        if (record.emotion === "화남") key = "angry";
-        else if (record.emotion === "우울") key = "depressed";
-        else if (record.emotion === "행복") key = "happy";
+        if (record.emotion === "화남") {
+          key = "angry";
+          angryWeight += Math.sqrt(record.tap_count || 0);
+        } else if (record.emotion === "우울") {
+          key = "depressed";
+          depressedWeight += Math.sqrt(record.tap_count || 0);
+        } else if (record.emotion === "행복") {
+          key = "happy";
+          happyWeight += Math.sqrt(record.tap_count || 0);
+        }
 
         if (key) {
           newStats.emotions[key].count += 1;
@@ -85,6 +104,41 @@ export default function StatsBottomSheet({
       });
 
       setStats(newStats);
+
+      if (data.length === 0) {
+        setMindResult(null);
+      } else {
+        const totalWeight = angryWeight + depressedWeight + happyWeight;
+        if (totalWeight > 0) {
+          const angryPct = Math.round((angryWeight / totalWeight) * 100);
+          const depressedPct = Math.round((depressedWeight / totalWeight) * 100);
+          const happyPct = Math.round((happyWeight / totalWeight) * 100);
+
+          let text = "";
+          if (happyPct >= 65) text = "많이 웃었던 날";
+          else if (angryPct >= 65) text = "마음에 불이 났던 날";
+          else if (depressedPct >= 65) text = "마음이 조금 가라앉았던 날";
+          else {
+            const pcts = [
+              { name: "happy", val: happyPct },
+              { name: "angry", val: angryPct },
+              { name: "depressed", val: depressedPct }
+            ].sort((a, b) => b.val - a.val);
+
+            if (pcts[0].val - pcts[2].val <= 15) {
+              text = "여러 마음이 오갔던 날";
+            } else {
+              const top2 = [pcts[0].name, pcts[1].name];
+              if (top2.includes("happy") && top2.includes("angry")) text = "웃다가 화도 났던 날";
+              else if (top2.includes("happy") && top2.includes("depressed")) text = "웃음 사이로 마음이 흐렸던 날";
+              else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 꽤 복잡했던 날";
+            }
+          }
+          setMindResult({ text, angryPct, depressedPct, happyPct });
+        } else {
+          setMindResult(null);
+        }
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -121,9 +175,23 @@ export default function StatsBottomSheet({
             </div>
           ) : (
             <>
-              <h1 className="text-2xl font-bold mb-14 tracking-tight text-black">
+              <div className="mb-14 flex flex-col gap-2">
+                <span className="text-sm font-bold text-black">오늘의 마음</span>
+                {mindResult ? (
+                  <>
+                    <h2 className="text-3xl font-bold text-black tracking-tight">{mindResult.text}</h2>
+                    <div className="text-sm text-black font-medium mt-1">
+                      행복 {mindResult.happyPct}% · 화남 {mindResult.angryPct}% · 우울 {mindResult.depressedPct}%
+                    </div>
+                  </>
+                ) : (
+                  <h2 className="text-3xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
+                )}
+              </div>
+
+              <h3 className="text-2xl font-bold mb-10 tracking-tight text-black">
                 오늘 <span className="text-3xl">{stats.totalSessions}</span>번 기록했어요
-              </h1>
+              </h3>
 
               <div className="flex flex-col gap-10 text-black">
                 {/* 화남 */}
