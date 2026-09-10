@@ -244,6 +244,8 @@ export default function Home() {
                 { id: 1, name: "심보성", avatar: "/avatars/simbosung.png" },
                 { id: 2, name: "정주희", avatar: "/avatars/jeongjuhee.png" },
                 { id: 3, name: "허혜란", avatar: "/avatars/heohyeran.png" },
+                { id: 4, name: "허정필", color: "bg-blue-500", text: "허" },
+                { id: 5, name: "심세아", color: "bg-orange-500", text: "심" },
               ].map((u) => (
                 <button
                   key={u.id}
@@ -254,7 +256,13 @@ export default function Home() {
                     setUserId(u.id);
                   }}
                 >
-                  <img src={u.avatar} alt={u.name} className="w-20 h-20 rounded-full object-cover select-none pointer-events-none" draggable={false} />
+                  {u.avatar ? (
+                    <img src={u.avatar} alt={u.name} className="w-20 h-20 rounded-full object-cover select-none pointer-events-none" draggable={false} />
+                  ) : (
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center select-none pointer-events-none ${u.color}`}>
+                      <span className="text-white text-3xl font-bold">{u.text}</span>
+                    </div>
+                  )}
                   <span className="text-lg font-bold text-black pointer-events-none">{u.name}</span>
                 </button>
               ))}
