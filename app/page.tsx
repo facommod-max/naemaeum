@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import StatsBottomSheet from "@/components/StatsBottomSheet";
 
 // Supabase 클라이언트 초기화
 const supabase = createClient();
@@ -28,11 +28,11 @@ const emotionHex: Record<Emotion, string> = {
 };
 
 export default function Home() {
-  const router = useRouter();
   const [activeEmotion, setActiveEmotion] = useState<Emotion | null>(null);
   const [tapCount, setTapCount] = useState(0);
   const [userId, setUserId] = useState<number | null>(null);
   const [isCheckingUser, setIsCheckingUser] = useState(true);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
   
   // 상태 업데이트 지연 방지를 위한 useRef 관리
   const tapCountRef = useRef(0);
@@ -273,7 +273,7 @@ export default function Home() {
             </div>
             <button 
               className="p-2 -mr-2 text-black active:opacity-50 transition-opacity"
-              onClick={() => router.push('/stats')}
+              onClick={() => setIsStatsOpen(true)}
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -307,6 +307,13 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* 통계 Bottom Sheet */}
+      <StatsBottomSheet 
+        isOpen={isStatsOpen} 
+        onClose={() => setIsStatsOpen(false)} 
+        userId={userId} 
+      />
     </div>
   );
 }
