@@ -31,6 +31,7 @@ export default function StatsBottomSheet({
   } | null;
 
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'today' | 'week' | 'month'>('today');
   const [mindResult, setMindResult] = useState<MindResult>(null);
   const [stats, setStats] = useState<StatsData>({
     totalSessions: 0,
@@ -43,28 +44,50 @@ export default function StatsBottomSheet({
 
   useEffect(() => {
     if (isOpen && userId) {
-      fetchStats(userId);
+      fetchStats(userId, activeTab);
     }
-  }, [isOpen, userId]);
+  }, [isOpen, userId, activeTab]);
 
-  const fetchStats = async (uid: number) => {
+  const fetchStats = async (uid: number, tab: 'today' | 'week' | 'month') => {
     setIsLoading(true);
     try {
+      // KST 시작/끝 날짜 계산
       const now = new Date();
-      // KST 오늘 시작/끝 날짜 계산
-      const kstDateString = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Seoul",
-      }).format(now);
-      
-      const startOfKstDay = new Date(`${kstDateString}T00:00:00+09:00`);
-      const endOfKstDay = new Date(`${kstDateString}T23:59:59.999+09:00`);
+      const kstStr = now.toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+      const kstDate = new Date(kstStr);
+
+      let start, end;
+      if (tab === 'week') {
+        const day = kstDate.getDay();
+        const diffToMonday = kstDate.getDate() - day + (day === 0 ? -6 : 1);
+        start = new Date(kstDate);
+        start.setDate(diffToMonday);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+      } else if (tab === 'month') {
+        start = new Date(kstDate.getFullYear(), kstDate.getMonth(), 1);
+        end = new Date(kstDate.getFullYear(), kstDate.getMonth() + 1, 0);
+      } else {
+        start = new Date(kstDate);
+        end = new Date(kstDate);
+      }
+
+      const fmt = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      const startStr = `${fmt(start)}T00:00:00+09:00`;
+      const endStr = `${fmt(end)}T23:59:59.999+09:00`;
 
       const { data, error } = await supabase
         .from("emotion_records")
         .select("emotion, tap_count")
         .eq("user_id", uid)
-        .gte("recorded_at", startOfKstDay.toISOString())
-        .lte("recorded_at", endOfKstDay.toISOString());
+        .gte("recorded_at", startStr)
+        .lte("recorded_at", endStr);
 
       if (error) {
         console.error("Failed to fetch stats", error);
@@ -115,25 +138,52 @@ export default function StatsBottomSheet({
           const happyPct = Math.round((happyWeight / totalWeight) * 100);
 
           let text = "";
-          if (happyPct >= 65) text = "많이 웃었던 날";
-          else if (angryPct >= 65) text = "마음에 불이 났던 날";
-          else if (depressedPct >= 65) text = "마음이 조금 가라앉았던 날";
-          else {
-            const pcts = [
-              { name: "happy", val: happyPct },
-              { name: "angry", val: angryPct },
-              { name: "depressed", val: depressedPct }
-            ].sort((a, b) => b.val - a.val);
+          const pcts = [
+            { name: "happy", val: happyPct },
+            { name: "angry", val: angryPct },
+            { name: "depressed", val: depressedPct }
+          ].sort((a, b) => b.val - a.val);
 
-            if (pcts[0].val - pcts[2].val <= 15) {
-              text = "여러 마음이 오갔던 날";
-            } else {
-              const top2 = [pcts[0].name, pcts[1].name];
-              if (top2.includes("happy") && top2.includes("angry")) text = "웃다가 화도 났던 날";
-              else if (top2.includes("happy") && top2.includes("depressed")) text = "웃음 사이로 마음이 흐렸던 날";
-              else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 꽤 복잡했던 날";
+          const top2 = [pcts[0].name, pcts[1].name];
+
+          if (tab === 'today') {
+            if (happyPct >= 65) text = "많이 웃었던 날";
+            else if (angryPct >= 65) text = "마음에 불이 났던 날";
+            else if (depressedPct >= 65) text = "마음이 조금 가라앉았던 날";
+            else {
+              if (pcts[0].val - pcts[2].val <= 15) text = "여러 마음이 오갔던 날";
+              else {
+                if (top2.includes("happy") && top2.includes("angry")) text = "웃다가 화도 났던 날";
+                else if (top2.includes("happy") && top2.includes("depressed")) text = "웃음 사이로 마음이 흐렸던 날";
+                else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 꽤 복잡했던 날";
+              }
+            }
+          } else if (tab === 'week') {
+            if (happyPct >= 65) text = "행복이 많이 머문 한 주";
+            else if (angryPct >= 65) text = "마음에 불이 자주 났던 한 주";
+            else if (depressedPct >= 65) text = "조금 가라앉아 있던 한 주";
+            else {
+              if (pcts[0].val - pcts[2].val <= 15) text = "여러 마음이 오간 한 주";
+              else {
+                if (top2.includes("happy") && top2.includes("angry")) text = "웃기도 하고 화도 났던 한 주";
+                else if (top2.includes("happy") && top2.includes("depressed")) text = "웃음과 흐림이 함께한 한 주";
+                else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 조금 복잡했던 한 주";
+              }
+            }
+          } else if (tab === 'month') {
+            if (happyPct >= 65) text = "행복이 많이 머문 한 달";
+            else if (angryPct >= 65) text = "마음에 불이 자주 났던 한 달";
+            else if (depressedPct >= 65) text = "조금 가라앉아 있던 한 달";
+            else {
+              if (pcts[0].val - pcts[2].val <= 15) text = "여러 마음이 오간 한 달";
+              else {
+                if (top2.includes("happy") && top2.includes("angry")) text = "웃기도 하고 화도 났던 한 달";
+                else if (top2.includes("happy") && top2.includes("depressed")) text = "웃음과 흐림이 함께한 한 달";
+                else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 조금 복잡했던 한 달";
+              }
             }
           }
+
           setMindResult({ text, angryPct, depressedPct, happyPct });
         } else {
           setMindResult(null);
@@ -144,6 +194,12 @@ export default function StatsBottomSheet({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getPeriodText = () => {
+    if (activeTab === 'week') return "이번 주";
+    if (activeTab === 'month') return "이번 달";
+    return "오늘";
   };
 
   return (
@@ -169,6 +225,23 @@ export default function StatsBottomSheet({
 
         {/* 콘텐츠 */}
         <div className="flex-1 flex flex-col pt-4 max-w-md mx-auto w-full overflow-y-auto pb-10">
+          
+          {/* 상단 탭 */}
+          <div className="flex flex-row gap-6 mb-10 text-lg text-gray-400">
+            <button 
+              className={`transition-colors ${activeTab === 'today' ? "font-bold text-black" : ""}`}
+              onClick={() => setActiveTab('today')}
+            >오늘</button>
+            <button 
+              className={`transition-colors ${activeTab === 'week' ? "font-bold text-black" : ""}`}
+              onClick={() => setActiveTab('week')}
+            >이번 주</button>
+            <button 
+              className={`transition-colors ${activeTab === 'month' ? "font-bold text-black" : ""}`}
+              onClick={() => setActiveTab('month')}
+            >이번 달</button>
+          </div>
+
           {isLoading ? (
             <div className="w-full h-32 flex items-center justify-center text-gray-400">
               ...
@@ -176,7 +249,7 @@ export default function StatsBottomSheet({
           ) : (
             <>
               <div className="mb-14 flex flex-col gap-2">
-                <span className="text-sm font-bold text-black">오늘의 마음</span>
+                <span className="text-sm font-bold text-black">{getPeriodText()}의 마음</span>
                 {mindResult ? (
                   <>
                     <h2 className="text-3xl font-bold text-black tracking-tight">{mindResult.text}</h2>
@@ -190,7 +263,7 @@ export default function StatsBottomSheet({
               </div>
 
               <h3 className="text-2xl font-bold mb-10 tracking-tight text-black">
-                오늘 <span className="text-3xl">{stats.totalSessions}</span>번 기록했어요
+                {getPeriodText()} <span className="text-3xl">{stats.totalSessions}</span>번 기록했어요
               </h3>
 
               <div className="flex flex-col gap-10 text-black">
