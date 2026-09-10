@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 const supabase = createClient();
@@ -15,6 +15,13 @@ type StatsData = {
   };
 };
 
+type MindResult = {
+  text: string;
+  angryPct: number;
+  depressedPct: number;
+  happyPct: number;
+} | null;
+
 export default function StatsBottomSheet({
   isOpen,
   onClose,
@@ -24,28 +31,12 @@ export default function StatsBottomSheet({
   onClose: () => void;
   userId: number | null;
 }) {
-  type MindResult = {
-    text: string;
-    angryPct: number;
-    depressedPct: number;
-    happyPct: number;
-  } | null;
-
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  
+  const [todayData, setTodayData] = useState<any[]>([]);
   const [weekData, setWeekData] = useState<any[]>([]);
-
-  const [mindResult, setMindResult] = useState<MindResult>(null);
-  const [stats, setStats] = useState<StatsData>({
-    totalSessions: 0,
-    totalTaps: 0,
-    emotions: {
-      angry: { count: 0, taps: 0 },
-      depressed: { count: 0, taps: 0 },
-      happy: { count: 0, taps: 0 },
-    },
-  });
 
   const getKstTodayStr = () => {
     const now = new Date();
@@ -68,20 +59,6 @@ export default function StatsBottomSheet({
       }
     }
   }, [isOpen, userId, activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'week' && weekData && selectedDate && !isLoading) {
-      const recordsForDate = weekData.filter(r => {
-        const rKstStr = new Date(r.recorded_at).toLocaleString("en-US", { timeZone: "Asia/Seoul" });
-        const rDate = new Date(rKstStr);
-        const y = rDate.getFullYear();
-        const m = String(rDate.getMonth() + 1).padStart(2, '0');
-        const d = String(rDate.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}` === selectedDate;
-      });
-      processData(recordsForDate);
-    }
-  }, [selectedDate, weekData, activeTab, isLoading]);
 
   const fetchData = async (tab: 'today' | 'week', uid: number) => {
     setIsLoading(true);
@@ -126,7 +103,7 @@ export default function StatsBottomSheet({
       if (tab === 'week') {
         setWeekData(data);
       } else {
-        processData(data);
+        setTodayData(data);
       }
     } catch (e) {
       console.error(e);
@@ -135,7 +112,7 @@ export default function StatsBottomSheet({
     }
   };
 
-  const processData = (data: any[]) => {
+  const computeStats = (data: any[], type: 'day' | 'week'): { stats: StatsData, mindResult: MindResult } => {
     const newStats: StatsData = {
       totalSessions: data.length,
       totalTaps: 0,
@@ -170,26 +147,26 @@ export default function StatsBottomSheet({
       }
     });
 
-    setStats(newStats);
-
     if (data.length === 0) {
-      setMindResult(null);
-    } else {
-      const totalWeight = angryWeight + depressedWeight + happyWeight;
-      if (totalWeight > 0) {
-        const angryPct = Math.round((angryWeight / totalWeight) * 100);
-        const depressedPct = Math.round((depressedWeight / totalWeight) * 100);
-        const happyPct = Math.round((happyWeight / totalWeight) * 100);
+      return { stats: newStats, mindResult: null };
+    }
 
-        let text = "";
-        const pcts = [
-          { name: "happy", val: happyPct },
-          { name: "angry", val: angryPct },
-          { name: "depressed", val: depressedPct }
-        ].sort((a, b) => b.val - a.val);
+    const totalWeight = angryWeight + depressedWeight + happyWeight;
+    if (totalWeight > 0) {
+      const angryPct = Math.round((angryWeight / totalWeight) * 100);
+      const depressedPct = Math.round((depressedWeight / totalWeight) * 100);
+      const happyPct = Math.round((happyWeight / totalWeight) * 100);
 
-        const top2 = [pcts[0].name, pcts[1].name];
+      let text = "";
+      const pcts = [
+        { name: "happy", val: happyPct },
+        { name: "angry", val: angryPct },
+        { name: "depressed", val: depressedPct }
+      ].sort((a, b) => b.val - a.val);
 
+      const top2 = [pcts[0].name, pcts[1].name];
+
+      if (type === 'day') {
         if (happyPct >= 65) text = "많이 웃었던 날";
         else if (angryPct >= 65) text = "마음에 불이 났던 날";
         else if (depressedPct >= 65) text = "마음이 조금 가라앉았던 날";
@@ -201,12 +178,24 @@ export default function StatsBottomSheet({
             else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 꽤 복잡했던 날";
           }
         }
-
-        setMindResult({ text, angryPct, depressedPct, happyPct });
       } else {
-        setMindResult(null);
+        if (happyPct >= 65) text = "행복이 많이 머문 한 주네요";
+        else if (angryPct >= 65) text = "마음에 불이 자주 났던 한 주네요";
+        else if (depressedPct >= 65) text = "조금 가라앉아 있던 한 주네요";
+        else {
+          if (pcts[0].val - pcts[2].val <= 15) text = "여러 마음이 오간 한 주네요";
+          else {
+            if (top2.includes("happy") && top2.includes("angry")) text = "웃기도 하고 화도 났던 한 주네요";
+            else if (top2.includes("happy") && top2.includes("depressed")) text = "웃음과 흐림이 함께한 한 주네요";
+            else if (top2.includes("angry") && top2.includes("depressed")) text = "마음이 꽤 복잡한 한 주네요";
+          }
+        }
       }
+
+      return { stats: newStats, mindResult: { text, angryPct, depressedPct, happyPct } };
     }
+
+    return { stats: newStats, mindResult: null };
   };
 
   const getWeekDays = () => {
@@ -271,6 +260,21 @@ export default function StatsBottomSheet({
     return `${parseInt(m)}월 ${parseInt(date)}일 ${names[dayIndex]}요일`;
   };
 
+  const todayComputed = useMemo(() => computeStats(todayData, 'day'), [todayData]);
+  const weekOverallComputed = useMemo(() => computeStats(weekData, 'week'), [weekData]);
+  const weekDayComputed = useMemo(() => {
+    if (!selectedDate) return computeStats([], 'day');
+    const records = weekData.filter(r => {
+      const rKstStr = new Date(r.recorded_at).toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+      const rDate = new Date(rKstStr);
+      const y = rDate.getFullYear();
+      const m = String(rDate.getMonth() + 1).padStart(2, '0');
+      const d = String(rDate.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}` === selectedDate;
+    });
+    return computeStats(records, 'day');
+  }, [weekData, selectedDate]);
+
   return (
     <>
       <div 
@@ -302,89 +306,155 @@ export default function StatsBottomSheet({
             >주간</button>
           </div>
 
-          {isLoading && activeTab === 'today' ? (
+          {isLoading ? (
             <div className="w-full h-32 flex items-center justify-center text-gray-400">
               ...
             </div>
           ) : (
             <>
-              {activeTab === 'week' && (
-                <div className="w-full flex flex-row justify-between mb-10 text-black">
-                  {getWeekDays().map((d) => {
-                    const isSelected = selectedDate === d.fullDateStr;
-                    return (
-                      <button 
-                        key={d.fullDateStr} 
-                        className="flex flex-col items-center gap-3 active:opacity-50 transition-opacity"
-                        onClick={() => setSelectedDate(d.fullDateStr)}
-                      >
-                        <span className={`text-sm ${isSelected ? 'font-bold text-black' : 'text-gray-500'}`}>
-                          {d.name}
-                        </span>
-                        <span className={`text-sm ${isSelected ? 'font-bold text-black' : 'text-gray-500'}`}>
-                          {d.date}
-                        </span>
-                        <div className={`w-3 h-3 rounded-full ${d.colorClass}`} />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {activeTab === 'week' && (
-                <span className="text-sm font-bold text-black mb-4 block">
-                  {getFormattedSelectedDate()}
-                </span>
-              )}
               {activeTab === 'today' && (
-                <span className="text-sm font-bold text-black mb-4 block">오늘의 마음</span>
+                <>
+                  <span className="text-sm font-bold text-black mb-4 block">오늘의 마음</span>
+                  <div className="mb-14 flex flex-col gap-2">
+                    {todayComputed.mindResult ? (
+                      <>
+                        <h2 className="text-2xl font-bold text-black tracking-tight">{todayComputed.mindResult.text}</h2>
+                        <div className="text-sm text-black font-medium mt-1">
+                          행복 {todayComputed.mindResult.happyPct}% · 화남 {todayComputed.mindResult.angryPct}% · 우울 {todayComputed.mindResult.depressedPct}%
+                        </div>
+                      </>
+                    ) : (
+                      <h2 className="text-2xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
+                    )}
+                  </div>
+
+                  {todayComputed.mindResult && (
+                    <div className="flex flex-col gap-6 text-black mt-10 border-t border-gray-100 pt-8">
+                      {/* 총 기록 */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold">총 기록</span>
+                        <span className="text-sm font-medium text-gray-700">{todayComputed.stats.totalSessions}회</span>
+                      </div>
+
+                      {/* 화남 */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold">화남</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          {todayComputed.stats.emotions.angry.count}회 · {todayComputed.stats.emotions.angry.taps}터치
+                        </span>
+                      </div>
+
+                      {/* 우울 */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold">우울</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          {todayComputed.stats.emotions.depressed.count}회 · {todayComputed.stats.emotions.depressed.taps}터치
+                        </span>
+                      </div>
+
+                      {/* 행복 */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-bold">행복</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          {todayComputed.stats.emotions.happy.count}회 · {todayComputed.stats.emotions.happy.taps}터치
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
-              <div className="mb-14 flex flex-col gap-2">
-                {mindResult ? (
-                  <>
-                    <h2 className="text-2xl font-bold text-black tracking-tight">{mindResult.text}</h2>
-                    <div className="text-sm text-black font-medium mt-1">
-                      행복 {mindResult.happyPct}% · 화남 {mindResult.angryPct}% · 우울 {mindResult.depressedPct}%
+              {activeTab === 'week' && (
+                <>
+                  <div className="w-full flex flex-row justify-between mb-10 text-black">
+                    {getWeekDays().map((d) => {
+                      const isSelected = selectedDate === d.fullDateStr;
+                      return (
+                        <button 
+                          key={d.fullDateStr} 
+                          className="flex flex-col items-center gap-3 active:opacity-50 transition-opacity"
+                          onClick={() => setSelectedDate(d.fullDateStr)}
+                        >
+                          <span className={`text-sm ${isSelected ? 'font-bold text-black' : 'text-gray-500'}`}>
+                            {d.name}
+                          </span>
+                          <span className={`text-sm ${isSelected ? 'font-bold text-black' : 'text-gray-500'}`}>
+                            {d.date}
+                          </span>
+                          <div className={`w-3 h-3 rounded-full ${d.colorClass}`} />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <span className="text-sm font-bold text-black mb-4 block">이번 주의 마음</span>
+                  <div className="mb-8 flex flex-col gap-2">
+                    {weekOverallComputed.mindResult ? (
+                      <>
+                        <h2 className="text-2xl font-bold text-black tracking-tight">{weekOverallComputed.mindResult.text}</h2>
+                        <div className="text-sm text-black font-medium mt-1">
+                          행복 {weekOverallComputed.mindResult.happyPct}% · 화남 {weekOverallComputed.mindResult.angryPct}% · 우울 {weekOverallComputed.mindResult.depressedPct}%
+                        </div>
+                      </>
+                    ) : (
+                      <h2 className="text-2xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
+                    )}
+                  </div>
+
+                  {/* Day Box */}
+                  <div className="bg-[#F5F5F5] rounded-lg p-6 w-full flex flex-col mt-4">
+                    <span className="text-sm font-bold text-black mb-4 block">
+                      {getFormattedSelectedDate()}
+                    </span>
+
+                    <div className="flex flex-col gap-2">
+                      {weekDayComputed.mindResult ? (
+                        <>
+                          <h2 className="text-2xl font-bold text-black tracking-tight">{weekDayComputed.mindResult.text}</h2>
+                          <div className="text-sm text-black font-medium mt-1">
+                            행복 {weekDayComputed.mindResult.happyPct}% · 화남 {weekDayComputed.mindResult.angryPct}% · 우울 {weekDayComputed.mindResult.depressedPct}%
+                          </div>
+                        </>
+                      ) : (
+                        <h2 className="text-2xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
+                      )}
                     </div>
-                  </>
-                ) : (
-                  <h2 className="text-2xl font-bold text-black tracking-tight">아직 기록된 마음이 없어요</h2>
-                )}
-              </div>
 
-              {mindResult && (
-                <div className="flex flex-col gap-6 text-black mt-10 border-t border-gray-100 pt-8">
-                  {/* 총 기록 */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold">총 기록</span>
-                    <span className="text-sm font-medium text-gray-700">{stats.totalSessions}회</span>
-                  </div>
+                    {weekDayComputed.mindResult && (
+                      <div className="flex flex-col gap-6 text-black mt-8 border-t border-gray-200 pt-6">
+                        {/* 총 기록 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold">총 기록</span>
+                          <span className="text-sm font-medium text-gray-700">{weekDayComputed.stats.totalSessions}회</span>
+                        </div>
 
-                  {/* 화남 */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold">화남</span>
-                    <span className="text-sm font-medium text-gray-700">
-                      {stats.emotions.angry.count}회 · {stats.emotions.angry.taps}터치
-                    </span>
-                  </div>
+                        {/* 화남 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold">화남</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {weekDayComputed.stats.emotions.angry.count}회 · {weekDayComputed.stats.emotions.angry.taps}터치
+                          </span>
+                        </div>
 
-                  {/* 우울 */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold">우울</span>
-                    <span className="text-sm font-medium text-gray-700">
-                      {stats.emotions.depressed.count}회 · {stats.emotions.depressed.taps}터치
-                    </span>
-                  </div>
+                        {/* 우울 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold">우울</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {weekDayComputed.stats.emotions.depressed.count}회 · {weekDayComputed.stats.emotions.depressed.taps}터치
+                          </span>
+                        </div>
 
-                  {/* 행복 */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold">행복</span>
-                    <span className="text-sm font-medium text-gray-700">
-                      {stats.emotions.happy.count}회 · {stats.emotions.happy.taps}터치
-                    </span>
+                        {/* 행복 */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold">행복</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            {weekDayComputed.stats.emotions.happy.count}회 · {weekDayComputed.stats.emotions.happy.taps}터치
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                </>
               )}
             </>
           )}
