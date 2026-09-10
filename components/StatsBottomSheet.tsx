@@ -94,20 +94,10 @@ export default function StatsBottomSheet({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Full Screen Slide-up View */}
       <div 
-        className={`fixed inset-0 bg-black/30 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
-      />
-
-      {/* Bottom Sheet */}
-      <div 
-        className={`fixed bottom-0 left-0 right-0 w-full h-[85dvh] bg-white rounded-t-[24px] z-50 transform transition-transform duration-300 ease-in-out flex flex-col px-6 py-4 shadow-xl ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`fixed bottom-0 left-0 right-0 w-full h-[100dvh] bg-white z-50 transform transition-transform duration-300 ease-in-out flex flex-col px-6 py-4 ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
       >
-        {/* 상단 핸들 */}
-        <div className="w-full flex justify-center mb-6">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
-        </div>
 
         {/* 닫기 아이콘 */}
         <div className="absolute top-4 right-4 z-10">
